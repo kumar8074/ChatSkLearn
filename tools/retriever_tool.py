@@ -31,4 +31,4 @@ def build_retrieval_tool():
 
     retrieval_tool.metadata= {"source": "scikit-learn-docs"}
     
-    return retrieval_tool
+    return retrieval_tool, retriever
