@@ -1,2 +1,5 @@
 .env
 DATA/
+Notebooks/
+__pycache__/
+.langgraph_api/
