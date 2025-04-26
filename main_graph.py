@@ -1,3 +1,15 @@
+# ===================================================================================
+# Project: ChatSkLearn
+# File: main_graph.py
+# Description: This file contains the entire basecode of ChatSklearn.
+#              This is a redundant file and was only used for testing purposes.
+# Author: LALAN KUMAR
+# Created: [21-04-2025]
+# Updated: [26-04-2025]
+# LAST MODIFIED BY: LALAN KUMAR [https://github.com/kumar8074]
+# Version: 1.0.0
+# ===================================================================================
+
 import os
 from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -7,7 +19,7 @@ from typing_extensions import Annotated, Any, Literal, Optional, Union
 from langchain_core.documents import Document
 import uuid
 import hashlib
-
+import asyncio
 from langchain_core.documents import Document
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import StateGraph, START, END
@@ -18,7 +30,7 @@ from langchain_core.messages import AnyMessage
 from langgraph.graph import add_messages
 from typing_extensions import Any, Literal, TypedDict, cast
 
-from langchain_core.messages import BaseMessage
+from langchain_core.messages import BaseMessage, HumanMessage
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END, START, StateGraph
 load_dotenv()
@@ -430,7 +442,20 @@ builder.add_edge("respond", END)
 graph = builder.compile()
 graph.name = "RetrievalGraph"
 
-print("Graph compiled successfully.")
-print(graph.nodes)
+#print("Graph compiled successfully.")
+#print(graph.nodes)
+
+input_state = AgentState(
+    messages=[HumanMessage(content="How to use Logistic Regression?")]
+)
+
+
+result = asyncio.run(graph.ainvoke(input_state))
+print(result)
+
+print("------------------------------------------------------------------------------------------",sep="\n")
+
+final_response = result["messages"][-1].content
+print(final_response)
 
 
