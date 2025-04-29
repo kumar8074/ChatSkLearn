@@ -2,3 +2,4 @@
 DATA/
 __pycache__/
 .langgraph_api/
+codex.txt

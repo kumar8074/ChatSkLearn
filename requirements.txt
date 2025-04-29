@@ -15,4 +15,5 @@ beautifulsoup4
 aiohttp
 python-dotenv
 numexpr
+flask
 
