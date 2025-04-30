@@ -1,153 +1,163 @@
 # ChatSkLearn
 
-A Scikit-learn expert chatbot built with LangGraph, LangChain, and multiple LLM providers.
+ChatSkLearn is an intelligent assistant that helps users with Scikit-learn related queries by combining web crawling, vector embeddings, and a conversational interface powered by various LLM providers.
 
-## Overview
-
-ChatSkLearn is an intelligent assistant designed to help users with Scikit-learn related questions. It uses a combination of:
-
-- LangGraph for orchestrating the conversation flow
-- LangChain for document retrieval and LLM integration
-- Multiple LLM providers (Gemini, OpenAI, Anthropic, Cohere) with easy switching
-- Multiple embedding providers (Gemini, OpenAI, Cohere)
-- Chroma for vector storage
+![ChatSkLearn](https://via.placeholder.com/800x400?text=ChatSkLearn+Assistant)
 
 ## Features
 
-- Support for multiple LLM and embedding providers (defaults to Gemini)
-- Query classification to determine if questions are:
-  - Scikit-learn related (requiring research)
-  - General questions (politely declining non-relevant queries)
-  - Requiring more information
-- Automated research process that:
-  1. Generates a research plan
-  2. Creates diverse search queries
-  3. Retrieves relevant documents
-  4. Synthesizes information into a helpful response
-- Code-aware response formatting that preserves code blocks
+- **Multi-provider support**: Works with multiple LLM providers (Google Gemini, OpenAI, Anthropic, Cohere)
+- **Smart document crawling**: Automatically crawls Scikit-learn documentation 
+- **Content processing**: Splits and embeds documentation for semantic search
+- **Query routing**: Intelligently classifies user questions and determines next steps
+- **Assisted research**: Follows a research plan to answer complex Scikit-learn queries
+- **Context-aware responses**: Provides answers with citations from official documentation
 
-## Supported LLM Providers
+## Architecture
 
-- **Gemini** (Google) - Default
-- **OpenAI** (GPT models)
-- **Anthropic** (Claude models)
-- **Cohere** (Command models)
+ChatSkLearn is built with a modular architecture:
 
-## Supported Embedding Providers
+1. **Document Crawler**: Efficiently crawls Scikit-learn documentation
+2. **Data Ingestion**: Processes web content into chunks for embedding
+3. **Vector Store**: Stores embeddings for semantic search using Chroma
+4. **Retriever**: Retrieves relevant content when answering questions
+5. **Researcher Graph**: Follows a structured plan to research answers
+6. **Router Graph**: Determines how to handle each user query
+7. **Response Generator**: Creates coherent, accurate responses based on retrieved information
 
-- **Gemini** (Google) - Default
-- **OpenAI** (text-embedding models)
-- **Cohere** (embed models)
+## Getting Started
+
+### Prerequisites
+
+- Python 3.9+
+- API keys for at least one supported LLM provider
+
+### Installation
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/yourusername/chatsklearn.git
+   cd chatsklearn
+   ```
+
+2. Create a virtual environment:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+
+3. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. Set up your environment variables:
+   ```bash
+   cp .env.example .env
+   # Edit .env with your API keys
+   ```
+
+### Data Collection
+
+To crawl and process the Scikit-learn documentation:
+
+1. Run the web crawler:
+   ```bash
+   python -m processor.crawler
+   ```
+
+2. Process and ingest the data:
+   ```bash
+   python -m processor.data_ingestion
+   ```
+
+This will create a Chroma vector database with the embedded documentation chunks.
+
+## Usage
+
+Run the application:
+
+```bash
+python main.py
+```
+
+The assistant can answer questions about:
+- Scikit-learn API usage
+- Machine learning concepts
+- Model selection and evaluation
+- Data preprocessing techniques
+- Common errors and troubleshooting
+
+Example queries:
+- "How do I train a RandomForest classifier?"
+- "What's the difference between train_test_split and cross-validation?"
+- "How can I handle missing values in my dataset?"
+- "Why is my model overfitting and how can I fix it?"
+
+## Configuration
+
+The application can be configured by setting the following environment variables:
+
+```
+# LLM Provider (gemini, openai, anthropic, cohere)
+LLM_PROVIDER=gemini
+
+# Embedding Provider (gemini, openai, cohere)
+EMBEDDING_PROVIDER=gemini
+
+# API Keys
+GOOGLE_API_KEY=your_gemini_api_key
+OPENAI_API_KEY=your_openai_api_key
+ANTHROPIC_API_KEY=your_anthropic_api_key
+COHERE_API_KEY=your_cohere_api_key
+
+# Model selections (optional, defaults provided)
+GEMINI_LLM_MODEL=gemini-2.0-flash
+OPENAI_LLM_MODEL=gpt-4o
+ANTHROPIC_LLM_MODEL=claude-3-sonnet-20240229
+COHERE_LLM_MODEL=command
+```
 
 ## Project Structure
 
 ```
-chatSkLearn/
-├── README.md
-├── .env.example
-├── requirements.txt
-├── config/
-│   └── settings.py              # Configuration variables and  settings
+chatsklearn/
 ├── app/
-│   ├── __init__.py              # App initialization
-│   ├── main.py                  # Entry point
-│   ├── api/                     # API endpoints (Flask placeholder)
-│   │   ├── __init__.py
-│   │   └── routes.py
-│   ├── core/                    # Core functionality
-│   │   ├── __init__.py
-│   │   ├── embeddings.py        # Multi-provider embedding functionality
-│   │   ├── llm.py               # Multi-provider LLM setup
-│   │   └── utils.py             # Utility functions
-│   ├── graphs/                  # LangGraph components
-│   │   ├── __init__.py
-│   │   ├── base.py              # Common graph components
-│   │   ├── router.py            # Query analysis and routing logic
-│   │   ├── researcher.py        # Research graph logic
-│   │   ├── states.py            # State definitions
-│   │   └── prompts.py           # System prompts
-│   └── data/
-│       ├── __init__.py
-│       └── retriever.py         # Document retrieval functionality
-├── tests/                       # Unit and integration tests
-│   ├── __init__.py
-│   ├── test_router.py
-│   ├── test_researcher.py
-│   └── test_retriever.py
-└── DATA/                        # Data storage (could be gitignored)
-    └── chroma_store/            # Chroma vector store
+│   ├── core/         # Core utilities and model interfaces
+│   ├── graphs/       # LangGraph state management and flow
+│   └── retriever/    # Document retrieval components
+├── config/           # Application configuration
+├── DATA/             # Vector store data
+├── logs/             # Application logs
+├── notebooks/        # Jupyter notebooks for exploration
+├── processor/        # Web crawling and data ingestion
+└── main.py           # Application entry point
 ```
 
-## Setup Instructions
+## How It Works
 
-1. Clone the repository
-2. Create a virtual environment: `python -m venv venv`
-3. Activate the virtual environment:
-   - Windows: `venv\Scripts\activate`
-   - Unix/MacOS: `source venv/bin/activate`
-4. Install requirements: `pip install -r requirements.txt`
-5. Create a `.env` file with your API keys (see `.env.example`)
-6. Run the application: `python app/main.py`
-
-## API Usage
-
-The application exposes a simple Flask API with the following endpoints:
-
-### `/chat` (POST)
-
-Process chat messages with optional provider selection.
-
-Example:
-
-```python
-import requests
-
-response = requests.post("http://localhost:5000/chat", json={
-    "messages": [
-        {"role": "human", "content": "How do I implement a random forest classifier in scikit-learn?"}
-    ],
-    "llm_provider": "gemini",  # Optional: gemini, openai, anthropic, cohere
-    "embedding_provider": "gemini"  # Optional: gemini, openai, cohere
-})
-
-print(response.json())
-```
-
-### `/providers` (GET)
-
-Get information about available providers and current settings.
-
-Example:
-
-```python
-import requests
-
-response = requests.get("http://localhost:5000/providers")
-print(response.json())
-```
-
-## Switching Providers
-
-You can switch LLM and embedding providers in three ways:
-
-1. **Environment Variables**: Set `LLM_PROVIDER` and `EMBEDDING_PROVIDER` in your .env file
-2. **API Parameters**: Send provider preferences with each request
-3. **Programmatically**: When using the library directly
-
-Example of programmatic usage:
-
-```python
-from app.main import process_message
-
-async def example():
-    result = await process_message(
-        messages=[{"role": "human", "content": "How to use GridSearchCV in scikit-learn?"}],
-        llm_provider="openai",
-        embedding_provider="openai"
-    )
-    print(result)
-```
+1. **User Query Analysis**: The system classifies the query as scikit-learn related, general, or requiring more information
+2. **Research Planning**: For scikit-learn queries, a research plan is created
+3. **Document Retrieval**: Relevant documentation is retrieved using semantic search
+4. **Response Generation**: A detailed, accurate response is generated citing relevant documentation
 
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Acknowledgments
+
+- Built with [LangChain](https://github.com/langchain-ai/langchain) and [LangGraph](https://github.com/langchain-ai/langgraph)
+- Uses [ChromaDB](https://github.com/chroma-core/chroma) for vector storage
+- Powered by various LLM providers (Gemini, OpenAI, Anthropic, Cohere)
+- Documentation content from [Scikit-learn](https://scikit-learn.org/)
