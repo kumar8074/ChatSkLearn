@@ -24,6 +24,7 @@ if project_root not in sys.path:
 
 from config import settings
 from app.core.embeddings import get_embeddings
+from processor.logger import logging
 
 def get_vector_store(
     persist_directory: Optional[str] = None,
@@ -31,7 +32,7 @@ def get_vector_store(
 ) -> VectorStore:
     """Get a vector store instance with the specified embeddings.
 
-    If persist_directory is not provided, it is dynamically selected based on the LLM provider.
+    If persist_directory is not provided, it is dynamically selected based on the embedding provider.
 
     Args:
         persist_directory: Directory to persist the vector store.
@@ -40,13 +41,20 @@ def get_vector_store(
     Returns:
         A vector store instance.
     """
-    # Dynamically determine directory based on LLM provider
+    # Use the embedding provider from the function argument or from settings
+    provider = embedding_provider or settings.EMBEDDING_PROVIDER
+    
+    # Dynamically determine directory based on the provider
     if persist_directory is None:
-        llm_provider = settings.LLM_PROVIDER.lower()
-        persist_directory = f"DATA/chroma_store_{llm_provider}"
-
-    embeddings = get_embeddings(embedding_provider)
-    #print(f"vectorStore loaded from: {persist_directory} using embeddings: {embeddings}")
+        persist_directory = f"DATA/chroma_store_{provider.lower()}"
+    
+    # Create directory if it doesn't exist
+    os.makedirs(persist_directory, exist_ok=True)
+    
+    # Get the appropriate embeddings based on the provider
+    embeddings = get_embeddings(provider)
+    
+    # Create and return the vector store
     return Chroma(
         persist_directory=persist_directory,
         embedding_function=embeddings
@@ -70,7 +78,11 @@ def get_retriever(
     search_kwargs = search_kwargs or {"k": 5}
     vector_store = get_vector_store(persist_directory, embedding_provider)
     
-    #print(vector_store._collection.count()) # If 0, VectorStore is empty
+    # Check if the vector store has documents
+    collection_count = vector_store._collection.count()
+    #logging.info(f"VectorDB collection count is {collection_count}")
+    if collection_count == 0:
+        print(f"Warning: Vector store is empty for provider {embedding_provider or settings.EMBEDDING_PROVIDER}")
     
     return vector_store.as_retriever(search_kwargs=search_kwargs)
 

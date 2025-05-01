@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat SkLearn</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+</head>
+<body>
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <span>Chat History</span>
+      <span class="edit-icon" id="clearHistory">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path>
+        </svg>
+      </span>
+    </div>
+    <div id="chatHistoryContainer">
+      {% for message in chat_history %}
+        <div class="history-item">{{ message }}</div>
+      {% endfor %}
+    </div>
+  </div>
+  
+  <div class="main-content">
+    <div class="content-wrapper">
+      <div class="chat-header">
+        <div class="chat-title">
+          Chat SkLearn
+          <div class="logo">
+            <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo" width="100" height="auto">
+          </div>
+        </div>
+        
+        <div class="model-selector" id="modelSelector">
+          <span id="selectedModel">{{ selected_model_name }}</span>
+          <svg width="10" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+          <div class="model-options" id="modelOptions">
+            {% for model_id, model_name in models.items() %}
+              <div class="model-option" data-model="{{ model_id }}">{{ model_name }}</div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      
+      <div class="messages-container" id="messagesContainer">
+        <!-- Chat messages will be displayed here -->
+      </div>
+      
+      <div class="suggestion-container">
+        {% for suggestion in suggestions %}
+          <div class="suggestion">{{ suggestion }}</div>
+        {% endfor %}
+      </div>
+      
+      <div class="input-container" style="position: relative; display: flex; align-items: center;">
+        <textarea class="input-field" placeholder="How can I..." id="messageInput" style="flex: 1; padding-right: 40px;"></textarea>
+        <button class="send-button" id="sendButton" style="position: absolute; right: 5px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer;">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 12h18M15 5l7 7-7 7"></path>
+          </svg>
+        </button>
+        <div id="loadingIndicator" style="display: none; position: absolute; right: 15px; top: 50%; transform: translateY(-50%);">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="animate-spin">
+            <circle cx="12" cy="12" r="10" stroke-opacity="0.25"></circle>
+            <path d="M12 2a10 10 0 0 1 10 10" stroke-opacity="0.75"></path>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    $(document).ready(function() {
+      // Track if we're waiting for a response
+      let isWaitingForResponse = false;
+      
+      // Add some CSS for the loading animation
+      const style = document.createElement('style');
+      style.textContent = `
+        .animate-spin {
+          animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+          from {
+            transform: rotate(0deg);
+          }
+          to {
+            transform: rotate(360deg);
+          }
+        }
+      `;
+      document.head.appendChild(style);
+      
+      // Model selector functionality
+      $('#modelSelector').click(function(e) {
+        $('#modelOptions').toggleClass('show');
+        e.stopPropagation();
+      });
+      
+      $(document).click(function() {
+        $('#modelOptions').removeClass('show');
+      });
+      
+      // Select model
+      $('.model-option').click(function() {
+        const modelId = $(this).data('model');
+        $.post('/select_model', {model: modelId}, function(data) {
+          if (data.status === 'success') {
+            $('#selectedModel').text(data.model);
+          }
+        });
+      });
+      
+      // Handle suggestions
+      $('.suggestion').click(function() {
+        $('#messageInput').val($(this).text());
+        $('#messageInput').focus();
+      });
+      
+      // Send message
+      function sendMessage() {
+        // Prevent multiple submissions while waiting
+        if (isWaitingForResponse) {
+          return;
+        }
+        
+        const message = $('#messageInput').val().trim();
+        if (message) {
+          // Set waiting state
+          isWaitingForResponse = true;
+          $('#sendButton').hide();
+          $('#loadingIndicator').show();
+          $('#messageInput').prop('disabled', true);
+          
+          // Display user message immediately
+          displayMessage('user', message);
+          
+          // Send message to server
+          $.post('/send_message', {message: message}, function(data) {
+            if (data.status === 'success') {
+              // Display assistant response
+              displayMessage('assistant', data.response);
+              
+              // Hide the suggestions after an answer is provided
+              $('.suggestion-container').hide();
+              
+              // Update chat history in sidebar
+              updateChatHistory();
+            } else {
+              // Display error
+              alert('Error: ' + data.message);
+            }
+          })
+          .fail(function() {
+            alert('Server error. Please try again later.');
+          })
+          .always(function() {
+            // Reset waiting state
+            isWaitingForResponse = false;
+            $('#sendButton').show();
+            $('#loadingIndicator').hide();
+            $('#messageInput').prop('disabled', false);
+            
+            // Clear input
+            $('#messageInput').val('');
+            $('#messageInput').focus();
+          });
+        }
+      }
+      
+      $('#sendButton').click(sendMessage);
+      
+      $('#messageInput').keydown(function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          sendMessage();
+        }
+      });
+      
+      // Clear chat history
+      $('#clearHistory').click(function() {
+        if (confirm('Are you sure you want to clear chat history?')) {
+          $.post('/clear_chat_history', function(data) {
+            if (data.status === 'success') {
+              $('#chatHistoryContainer').empty();
+              $('#messagesContainer').empty();
+              // Show suggestions again when chat is cleared
+              $('.suggestion-container').show();
+            }
+          });
+        }
+      });
+      
+      // Helper functions
+      function displayMessage(role, content) {
+        const messageDiv = $('<div>').addClass('message').addClass(role);
+        const roleSpan = $('<span>').addClass('role').text(role === 'user' ? 'You' : 'Assistant');
+        
+        // Process markdown in content - particularly for code blocks
+        let processedContent = content;
+        
+        // Check if the content contains code blocks (```python...```)
+        if (content.includes('```')) {
+          processedContent = processMarkdownCodeBlocks(content);
+        }
+        
+        const contentSpan = $('<span>').addClass('content').html(processedContent);
+        
+        messageDiv.append(roleSpan).append(contentSpan);
+        $('#messagesContainer').append(messageDiv);
+        
+        // Scroll to bottom
+        $('#messagesContainer').scrollTop($('#messagesContainer')[0].scrollHeight);
+      }
+      
+      function processMarkdownCodeBlocks(text) {
+        // Split by code block markers
+        const parts = text.split(/(```[a-z]*\n[\s\S]*?\n```)/g);
+        
+        return parts.map(part => {
+          // Check if this part is a code block
+          if (part.startsWith('```') && part.endsWith('```')) {
+            // Extract the language (if specified)
+            const match = part.match(/```([a-z]*)\n([\s\S]*?)\n```/);
+            if (match) {
+              const language = match[1] || '';
+              const code = match[2];
+              
+              // Return formatted code block
+              return `<pre><code class="language-${language}">${escapeHtml(code)}</code></pre>`;
+            }
+          }
+          
+          // Regular text - preserve line breaks
+          return part.replace(/\n/g, '<br>');
+        }).join('');
+      }
+      
+      function escapeHtml(text) {
+        return text
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+      }
+      
+      function updateChatHistory() {
+        $.getJSON('/get_chat_history', function(data) {
+          $('#chatHistoryContainer').empty();
+          data.history.forEach(function(message) {
+            // Create a history item with just the message (no role prefix)
+            const historyItem = $('<div>').addClass('history-item').text(message);
+            $('#chatHistoryContainer').append(historyItem);
+          });
+        });
+      }
+      
+      // Load chat history on page load
+      updateChatHistory();
+    });
+  </script>
+</body>
+</html>

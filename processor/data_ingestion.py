@@ -15,6 +15,7 @@
 
 import os
 import sys
+import argparse
 
 # Add root path
 current_file_path = os.path.abspath(__file__)
@@ -55,14 +56,19 @@ def persist_vector_db(docs, embeddings, persist_directory):
     )
     logging.info(f"VectorDB persisted at: {persist_directory}")
 
-def main():
+def main(embedding_provider=None):
+    """Main function to ingest data, with optional provider specification."""
+    # Use the specified provider or default from settings
+    provider = embedding_provider or settings.EMBEDDING_PROVIDER
+    logging.info(f"Using embedding provider: {provider}")
+    
     urls_file_path = "processor/successful_urls.txt"
     logging.info(f"Loading URLs from {urls_file_path}")
     urls = load_urls(urls_file_path)
 
     logging.info(f"Loaded {len(urls)} URLs...")
     
-    logging.info(f"Loading Documents from URLs....(This might take a while have a coffe break)")
+    logging.info(f"Loading Documents from URLs....(This might take a while have a coffee break)")
     documents = load_documents(urls)
     logging.info(f"Loaded {len(documents)} documents...")
     
@@ -70,17 +76,72 @@ def main():
     docs = split_documents(documents)
     logging.info(f"Split into {len(docs)} chunks...")
 
-    # Get dynamic embedding model
-    embedding_provider = settings.EMBEDDING_PROVIDER
-    embeddings = get_embeddings(embedding_provider)
-    logging.info(f"Using Embedding provider: {embeddings}")
+    # Get dynamic embedding model based on provider
+    embeddings = get_embeddings(provider)
+    logging.info(f"Using Embedding model: {embeddings}")
 
     # Set output directory based on provider name
-    persist_directory = f"DATA/chroma_store_{embedding_provider.lower()}"
+    persist_directory = f"DATA/chroma_store_{provider.lower()}"
     os.makedirs(persist_directory, exist_ok=True)
     
-    logging.info(f"Persisting vectorDB...(This might take a while)")
+    logging.info(f"Persisting vectorDB to {persist_directory}...(This might take a while)")
     persist_vector_db(docs, embeddings, persist_directory)
 
+def ingest_all_providers():
+    """Ingest data for all available providers."""
+    providers = [
+        settings.EMBEDDING_PROVIDER_GEMINI,
+        settings.EMBEDDING_PROVIDER_OPENAI,
+        settings.EMBEDDING_PROVIDER_COHERE
+    ]
+    
+    for provider in providers:
+        # Check if API key exists for this provider
+        key_var_name = f"{provider.upper()}_API_KEY"
+        key = getattr(settings, key_var_name, None)
+        
+        if key:
+            logging.info(f"Processing data for {provider} provider")
+            try:
+                main(provider)
+                logging.info(f"Successfully processed data for {provider}")
+            except Exception as e:
+                logging.error(f"Error processing data for {provider}: {str(e)}")
+        else:
+            logging.warning(f"Skipping {provider} - API key not found")
+
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Ingest data for vector stores")
+    parser.add_argument("--provider", type=str, 
+                        help="Specific embedding provider to use (gemini, openai, cohere)")
+    parser.add_argument("--all", action="store_true", 
+                        help="Process data for all providers with valid API keys")
+    
+    args = parser.parse_args()
+    
+    if args.all:
+        ingest_all_providers()
+    elif args.provider:
+        # Convert provider name to the constant from settings
+        provider_map = {
+            "gemini": settings.EMBEDDING_PROVIDER_GEMINI,
+            "openai": settings.EMBEDDING_PROVIDER_OPENAI,
+            "cohere": settings.EMBEDDING_PROVIDER_COHERE
+        }
+        
+        provider = provider_map.get(args.provider.lower())
+        if provider:
+            main(provider)
+        else:
+            logging.error(f"Unknown provider: {args.provider}")
+    else:
+        # Use default provider from settings
+        main()
+        
+# To ingest data for all providers with valid API keys:
+#python processor/data_ingestion.py --all
+
+# Or for a specific provider:
+#python processor/data_ingestion.py --provider gemini
+#python processor/data_ingestion.py --provider openai
+#python processor/data_ingestion.py --provider cohere
