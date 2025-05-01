@@ -1,9 +1,22 @@
+# ===================================================================================
+# Project: ChatSkLearn
+# File: app/graphs/router.py
+# Description: This file Orchasterates the main ChatSkLearn Application.
+# Author: LALAN KUMAR
+# Created: [25-04-2025]
+# Updated: [01-05-2025]
+# LAST MODIFIED BY: LALAN KUMAR [https://github.com/kumar8074]
+# Version: 1.0.0
+# ===================================================================================
+
 from flask import Flask, render_template, request, jsonify, session
 import os
 import sys
 from uuid import uuid4
 import asyncio
 from langchain_core.messages import HumanMessage
+from langsmith import Client
+from langchain.callbacks.tracers import LangChainTracer
 
 # Add root path
 current_file_path = os.path.abspath(__file__)
@@ -12,6 +25,7 @@ if project_root not in sys.path:
     sys.path.append(project_root)
 
 # Import the router graph and settings
+from app.graphs.states import AgentState
 from app.graphs.router import create_router_graph
 from config import settings
 
@@ -20,6 +34,9 @@ app.secret_key = os.environ.get('SECRET_KEY', str(uuid4()))
 
 # Create the router graph
 router_graph = create_router_graph()
+
+langsmith_client = Client(api_key=os.environ.get("LANGSMITH_API_KEY"))
+tracer = LangChainTracer(client=langsmith_client, project_name="SkLearnAssistantProject")
 
 # Define models that are available and their corresponding LLM providers
 MODELS = {
@@ -48,7 +65,7 @@ SUGGESTIONS = [
 # In-memory chat history storage
 # In a production app, you'd use a database instead
 chat_history = {}
-conversation_states = {}
+
 
 @app.route('/')
 def index():
@@ -60,7 +77,6 @@ def index():
     if 'session_id' not in session:
         session['session_id'] = str(uuid4())
         chat_history[session['session_id']] = []
-        conversation_states[session['session_id']] = []
     
     return render_template('index.html', 
                           models=MODELS, 
@@ -91,53 +107,49 @@ def select_model():
 def send_message():
     message = request.form.get('message', '').strip()
     model_id = session.get('selected_model', 'gemini-2.0-flash')
-    
+    session_id = session.get('session_id')
+
     if not message:
         return jsonify({"status": "error", "message": "Message cannot be empty"})
-    
-    # Add user message to history
-    session_id = session.get('session_id')
-    if session_id not in chat_history:
-        chat_history[session_id] = []
-    
-    # Add the user's message to chat history
-    chat_history[session_id].append(message)
-    
-    # Make sure we're using the right LLM provider
+
+    # Prepare config with thread_id for persistence
+    config = {"configurable": {"thread_id": session_id},
+              "callbacks":[tracer]
+    }
+
+    # Try to get current state from graph
+    try:
+        latest_state = router_graph.get_state(config)
+        current_messages = latest_state.values.get("messages", [])
+    except Exception:
+        current_messages = []
+
+    # Append new user message
+    current_messages.append(HumanMessage(content=message))
+
+    # Prepare input state
+    state = AgentState(messages=current_messages)
+
+    # Set LLM provider environment variables
     llm_provider = MODEL_TO_PROVIDER[model_id]
     os.environ["LLM_PROVIDER"] = llm_provider
     os.environ["EMBEDDING_PROVIDER"] = llm_provider
     settings.LLM_PROVIDER = llm_provider
     settings.EMBEDDING_PROVIDER = llm_provider
-    
-    # Prepare message for the graph
-    human_message = HumanMessage(content=message)
-    
-    # Get the conversation state or create a new one
-    if session_id not in conversation_states:
-        conversation_states[session_id] = []
-    
-    # Add the new message to the conversation state
-    current_state = conversation_states[session_id]
-    current_state.append(human_message)
-    
-    # Run the graph (asynchronously)
+
+    # Run the graph asynchronously
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     try:
-        # Invoke the graph with the current state
-        result = loop.run_until_complete(
-            router_graph.ainvoke({"messages": current_state})
-        )
-        
-        # Extract the response
-        response_message = result["messages"][-1]
-        response_content = response_message.content
-        
-        # Update the conversation state with the assistant's response
-        current_state.append(response_message)
-        conversation_states[session_id] = current_state
-        
+        result = loop.run_until_complete(router_graph.ainvoke(state, config))
+        assistant_messages = result.get("messages", [])
+        if assistant_messages:
+            current_messages.extend(assistant_messages)
+        # Update chat history for UI (optional)
+        chat_history.setdefault(session_id, []).append(message)
+        if assistant_messages:
+            chat_history[session_id].append(assistant_messages[-1].content)
+        response_content = assistant_messages[-1].content if assistant_messages else ""
         return jsonify({
             "status": "success",
             "message": message,
@@ -161,8 +173,6 @@ def clear_chat_history():
     session_id = session.get('session_id')
     if session_id in chat_history:
         chat_history[session_id] = []
-    if session_id in conversation_states:
-        conversation_states[session_id] = []
     return jsonify({"status": "success"})
 
 if __name__ == '__main__':

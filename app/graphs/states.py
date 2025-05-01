@@ -53,3 +53,4 @@ class AgentState(InputState):
     router: Router = field(default_factory=lambda: Router(type="general", logic=""))
     steps: list[str] = field(default_factory=list)
     documents: Annotated[list[Document], reduce_docs] = field(default_factory=list)
+    summary: str=""

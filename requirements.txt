@@ -10,6 +10,7 @@ chromadb
 langgraph
 langgraph-sdk
 langgraph-cli[inmem]
+langsmith
 requests
 beautifulsoup4
 aiohttp

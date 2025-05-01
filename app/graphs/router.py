@@ -16,6 +16,7 @@ import sys
 from langgraph.graph import StateGraph, START, END
 from typing_extensions import TypedDict, cast, Literal
 from langchain_core.runnables import RunnableConfig
+from langgraph.checkpoint.memory import MemorySaver
 
 # Dynamically add the project root directory to sys.path
 current_file_path = os.path.abspath(__file__)
@@ -32,7 +33,7 @@ from app.graphs.prompts import (
     RESPONSE_SYSTEM_PROMPT
 )
 from app.core.llm import get_llm
-from langchain_core.messages import BaseMessage, HumanMessage
+from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 from app.graphs.researcher import create_researcher_graph
 from app.core.utils import format_docs
 from typing import Any
@@ -122,6 +123,44 @@ def check_finished(state: AgentState) -> Literal["respond", "conduct_research"]:
         return "conduct_research"
     else:
         return "respond"
+    
+
+# Conversation summarization node
+async def summarize_conversation(
+    state: AgentState, *, config: RunnableConfig
+) -> dict[str, Any]:
+    """Summarize conversation history after every 5 messages."""
+    llm = get_llm()
+    
+    if len(state.messages) < 5:
+        # No summarization needed
+        return {}
+    
+    system_prompt = (
+        "You are an assistant that summarizes the conversation so far. "
+        "Create a concise summary capturing the key points."
+    )
+    
+    messages = [SystemMessage(content=system_prompt)] + state.messages
+    
+    summary_response = await llm.ainvoke(messages)
+    summary_text = summary_response.content.strip()
+    
+    # Keep summary and last 2 messages for context
+    last_messages = state.messages[-2:]
+    new_messages = [SystemMessage(content=f"Summary of conversation so far: {summary_text}")] + last_messages
+    
+    return {
+        "summary": summary_text,
+        "messages": new_messages
+    }
+
+# Conditional function to decide whether to summarize or continue
+def check_summarize(state: AgentState) -> Literal["summarize_conversation", "continue"]:
+    if len(state.messages) >= 5:
+        return "summarize_conversation"
+    else:
+        return "continue"
 
 async def respond(
     state: AgentState, *, config: RunnableConfig
@@ -147,6 +186,8 @@ def create_router_graph():
     builder.add_node("conduct_research", conduct_research)
     builder.add_node("create_research_plan", create_research_plan)
     builder.add_node("respond", respond)
+    builder.add_node("summarize_conversation", summarize_conversation)
+    builder.add_node("continue", lambda state, config: {})  # Dummy node to continue flow
 
     builder.add_edge(START, "analyze_and_route_query")
     builder.add_conditional_edges("analyze_and_route_query", route_query)
@@ -155,9 +196,14 @@ def create_router_graph():
     builder.add_edge("ask_for_more_info", END)
     builder.add_edge("respond_to_general_query", END)
     builder.add_edge("respond", END)
+    builder.add_conditional_edges("summarize_conversation", check_summarize, path_map=["summarize_conversation", "continue"])
+    builder.add_edge("continue", END)
+    
+    # Instantiate MemorySaver checkpointer
+    memory=MemorySaver()
 
     # Compile into a graph object that you can invoke and deploy
-    graph = builder.compile()
+    graph = builder.compile(checkpointer=memory)
     graph.name = "SkLearnAssistantGraph"
     
     return graph
@@ -169,11 +215,12 @@ def create_router_graph():
 #print(graph.nodes)
 
 #input_state = AgentState(
-    #messages=[HumanMessage(content="How apply PCA on images?")]
+    #messages=[HumanMessage(content="Hi my name is kumar?")]
 #)
+# Optionally, define a config with thread_id and user_id for persistence
+#config = {"configurable": {"thread_id": "1", "user_id": "user123"}}
 
-
-#result = asyncio.run(graph.ainvoke(input_state))
+#result = asyncio.run(graph.ainvoke(input_state,config))
 #print(result)
 
 #print("------------------------------------------------------------------------------------------",sep="\n")
