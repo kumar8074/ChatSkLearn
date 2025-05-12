@@ -1,13 +1,12 @@
 # ChatSkLearn
 
-ChatSkLearn is an intelligent assistant that helps users with Scikit-learn related queries by combining web crawling, vector embeddings, and a conversational interface powered by various LLM providers.
+ChatSkLearn is an intelligent assistant that helps users with Scikit-learn related queries by utilizing the power of LangGraph based Agents, vector embeddings, and a conversational interface powered by various LLM providers.
 
 ![ChatSkLearn](https://via.placeholder.com/800x400?text=ChatSkLearn+Assistant)
 
 ## Features
 
-- **Multi-provider support**: Works with multiple LLM providers (Google Gemini, OpenAI, Anthropic, Cohere)
-- **Smart document crawling**: Automatically crawls Scikit-learn documentation 
+- **Multi-provider support**: Works with multiple LLM providers (Google Gemini, OpenAI, Anthropic, Cohere) 
 - **Content processing**: Splits and embeds documentation for semantic search
 - **Query routing**: Intelligently classifies user questions and determines next steps
 - **Assisted research**: Follows a research plan to answer complex Scikit-learn queries
@@ -78,7 +77,7 @@ This will create a Chroma vector database with the embedded documentation chunks
 Run the application:
 
 ```bash
-python main.py
+python app/main.py
 ```
 
 The assistant can answer questions about:
@@ -125,13 +124,16 @@ chatsklearn/
 ├── app/
 │   ├── core/         # Core utilities and model interfaces
 │   ├── graphs/       # LangGraph state management and flow
-│   └── retriever/    # Document retrieval components
+│   ├── retriever/    # Document retrieval components
+│   ├── static/       # Static files (CSS, JS, images)
+│   ├── templates/    # HTML templates
+│   └── main.py       # Application entry point
 ├── config/           # Application configuration
 ├── DATA/             # Vector store data
 ├── logs/             # Application logs
 ├── notebooks/        # Jupyter notebooks for exploration
 ├── processor/        # Web crawling and data ingestion
-└── main.py           # Application entry point
+└── tests/            # Unit and integration tests
 ```
 
 ## How It Works

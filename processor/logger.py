@@ -22,12 +22,19 @@ project_root = os.path.abspath(os.path.join(current_file_path, "../.."))
 if project_root not in sys.path:
     sys.path.append(project_root)
 
-LOG_FILE=f"{datetime.now().strftime('%m_%d_%Y_%H_%M_%S')}.log"
-logs_path=os.path.join(os.getcwd(),"logs",LOG_FILE)
-os.makedirs(logs_path,exist_ok=True)
+# Define log filename format using current timestamp
+LOG_FILENAME = f"{datetime.now().strftime('%m_%d_%Y_%H_%M_%S')}.log"
 
-LOG_FILE_PATH=os.path.join(logs_path,LOG_FILE)
+# Define the directory path for logs
+LOGS_DIR = os.path.join(os.getcwd(), "logs")
 
+# Create the logs directory if it doesn't exist
+os.makedirs(LOGS_DIR, exist_ok=True)
+
+# Define the full path to the log file
+LOG_FILE_PATH = os.path.join(LOGS_DIR, LOG_FILENAME)
+
+# Configure basic logging
 logging.basicConfig(
     filename=LOG_FILE_PATH,
     format="[ %(asctime)s ] %(lineno)d %(name)s - %(levelname)s - %(message)s",

@@ -29,6 +29,20 @@ from app.graphs.states import AgentState
 from app.graphs.router import create_router_graph
 from config import settings
 
+from langchain.callbacks.base import AsyncCallbackHandler
+
+class StepStreamer(AsyncCallbackHandler):
+    """Collect every token the LLM emits and stash it in `self.tokens`."""
+    def __init__(self):
+        super().__init__()
+        self.tokens: list[str] = []
+
+    async def on_llm_new_token(self, token: str, **kwargs):
+        # called for every new token
+        self.tokens.append(token)
+
+
+
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', str(uuid4()))
 
@@ -57,7 +71,7 @@ MODEL_TO_PROVIDER = {
 # Sample suggestions
 SUGGESTIONS = [
     "How do I use RandomForestClassifier in scikit-learn?",
-    "What's the difference between train_test_split and StratifiedKFold?",
+    "How to apply PCA to images?",
     "How can I tune hyperparameters in scikit-learn?",
     "Explain how to handle imbalanced datasets in scikit-learn."
 ]
@@ -105,16 +119,24 @@ def select_model():
 
 @app.route('/send_message', methods=['POST'])
 def send_message():
-    message = request.form.get('message', '').strip()
+    # Support both JSON and form data
+    if request.is_json:
+        message = request.json.get('message', '').strip()
+    else:
+        message = request.form.get('message', '').strip()
     model_id = session.get('selected_model', 'gemini-2.0-flash')
     session_id = session.get('session_id')
 
     if not message:
         return jsonify({"status": "error", "message": "Message cannot be empty"})
 
+    streamer = StepStreamer()
+
     # Prepare config with thread_id for persistence
-    config = {"configurable": {"thread_id": session_id},
-              "callbacks":[tracer]
+    config = {
+        "configurable": {"thread_id": session_id},
+        "callbacks":[tracer, streamer],
+        "streaming": True
     }
 
     # Try to get current state from graph
@@ -142,6 +164,8 @@ def send_message():
     asyncio.set_event_loop(loop)
     try:
         result = loop.run_until_complete(router_graph.ainvoke(state, config))
+        full_streamed_text="".join(streamer.tokens)
+        #print("STREAMED:" ,full_streamed_text)
         assistant_messages = result.get("messages", [])
         if assistant_messages:
             current_messages.extend(assistant_messages)
@@ -154,6 +178,7 @@ def send_message():
             "status": "success",
             "message": message,
             "response": response_content,
+            "streamed_text": full_streamed_text,
             "model": MODELS[model_id]
         })
     finally:

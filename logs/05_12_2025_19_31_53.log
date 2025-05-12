@@ -1,0 +1,15 @@
+[ 2025-05-12 19:31:53,661 ] 97 werkzeug - WARNING -  * Debugger is active!
+[ 2025-05-12 19:31:53,669 ] 97 werkzeug - INFO -  * Debugger PIN: 173-324-028
+[ 2025-05-12 19:31:58,539 ] 97 werkzeug - INFO - 127.0.0.1 - - [12/May/2025 19:31:58] "GET / HTTP/1.1" 200 -
+[ 2025-05-12 19:31:58,552 ] 97 werkzeug - INFO - 127.0.0.1 - - [12/May/2025 19:31:58] "[36mGET /static/images/logo.png HTTP/1.1[0m" 304 -
+[ 2025-05-12 19:31:58,552 ] 97 werkzeug - INFO - 127.0.0.1 - - [12/May/2025 19:31:58] "[36mGET /static/js/main.js HTTP/1.1[0m" 304 -
+[ 2025-05-12 19:31:58,552 ] 97 werkzeug - INFO - 127.0.0.1 - - [12/May/2025 19:31:58] "[36mGET /static/css/style.css HTTP/1.1[0m" 304 -
+[ 2025-05-12 19:31:58,558 ] 97 werkzeug - INFO - 127.0.0.1 - - [12/May/2025 19:31:58] "GET /get_chat_history HTTP/1.1" 200 -
+[ 2025-05-12 19:31:58,559 ] 97 werkzeug - INFO - 127.0.0.1 - - [12/May/2025 19:31:58] "GET /get_suggestions HTTP/1.1" 200 -
+[ 2025-05-12 19:32:06,594 ] 1034 langchain_google_genai.chat_models - WARNING - Unexpected argument 'streaming' provided to ChatGoogleGenerativeAI. Did you mean: 'disable_streaming'?
+[ 2025-05-12 19:32:08,923 ] 1034 langchain_google_genai.chat_models - WARNING - Unexpected argument 'streaming' provided to ChatGoogleGenerativeAI. Did you mean: 'disable_streaming'?
+[ 2025-05-12 19:32:11,584 ] 1034 langchain_google_genai.chat_models - WARNING - Unexpected argument 'streaming' provided to ChatGoogleGenerativeAI. Did you mean: 'disable_streaming'?
+[ 2025-05-12 19:32:13,863 ] 22 chromadb.telemetry.product.posthog - INFO - Anonymized telemetry enabled. See                     https://docs.trychroma.com/telemetry for more information.
+[ 2025-05-12 19:32:16,048 ] 1034 langchain_google_genai.chat_models - WARNING - Unexpected argument 'streaming' provided to ChatGoogleGenerativeAI. Did you mean: 'disable_streaming'?
+[ 2025-05-12 19:32:18,686 ] 1034 langchain_google_genai.chat_models - WARNING - Unexpected argument 'streaming' provided to ChatGoogleGenerativeAI. Did you mean: 'disable_streaming'?
+[ 2025-05-12 19:32:24,168 ] 97 werkzeug - INFO - 127.0.0.1 - - [12/May/2025 19:32:24] "POST /send_message HTTP/1.1" 200 -

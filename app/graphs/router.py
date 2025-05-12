@@ -43,13 +43,16 @@ async def analyze_and_route_query(
     state: AgentState, *, config: RunnableConfig
 ) -> dict[str, Any]:
     """Analyze the user's query and determine the appropriate routing"""
-    llm = get_llm()
+    llm = get_llm(
+        streaming=config.get("streaming", False),
+        callbacks=config.get("callbacks", [])
+    )
     messages = [
         {"role": "system", "content": ROUTER_SYSTEM_PROMPT}
     ] + state.messages
     #response = cast(Router, await llm.with_structured_output({"logic": str, "type": str}).ainvoke(messages))
     model= llm.with_structured_output(Router) # Important for Gemini or Antropic models
-    response= await model.ainvoke(messages)
+    response= await model.ainvoke(messages, config=config)
     return {"router": response}
 
 # QueryRouter
@@ -72,10 +75,13 @@ async def ask_for_more_info(
     state: AgentState, *, config: RunnableConfig
 ) -> dict[str, list[BaseMessage]]:
     """Generate a response asking the user for more information"""
-    llm = get_llm()
+    llm = get_llm(
+        streaming=config.get("streaming", False), 
+        callbacks=config.get("callbacks", [])
+    )
     system_prompt = MORE_INFO_SYSTEM_PROMPT.format(logic=state.router["logic"])
     messages = [{"role": "system", "content": system_prompt}] + state.messages
-    response = await llm.ainvoke(messages)
+    response = await llm.ainvoke(messages, config=config)
     return {"messages": [response]}
 
 # Respond to general query
@@ -83,12 +89,15 @@ async def respond_to_general_query(
     state: AgentState, *, config: RunnableConfig
 ) -> dict[str, list[BaseMessage]]:
     """Generate a response to a general query not related to scikit-learn."""
-    llm = get_llm()
+    llm = get_llm(
+        streaming=config.get("streaming", False), 
+        callbacks=config.get("callbacks", [])
+    )
     system_prompt = GENERAL_SYSTEM_PROMPT.format(
         logic=state.router["logic"]
     )
     messages = [{"role": "system", "content": system_prompt}] + state.messages
-    response = await llm.ainvoke(messages)
+    response = await llm.ainvoke(messages, config=config)
     return {"messages": [response]}
 
 # Create research plan
@@ -101,12 +110,15 @@ async def create_research_plan(
         """Generate research plan."""
         steps: list[str]
 
-    llm = get_llm()
+    llm = get_llm(
+        streaming=config.get("streaming", False), 
+        callbacks=config.get("callbacks", [])
+    )
     model = llm.with_structured_output(Plan)
     messages = [
         {"role": "system", "content": RESEARCH_PLAN_SYSTEM_PROMPT}
     ] + state.messages
-    response = cast(Plan, await model.ainvoke(messages))
+    response = cast(Plan, await model.ainvoke(messages, config=config))
     return {"steps": response["steps"], "documents": "delete"}
 
 # Conduct Research
@@ -130,7 +142,10 @@ async def summarize_conversation(
     state: AgentState, *, config: RunnableConfig
 ) -> dict[str, Any]:
     """Summarize conversation history after every 5 messages."""
-    llm = get_llm()
+    llm = get_llm(
+        streaming=config.get("streaming", False), 
+        callbacks=config.get("callbacks", [])
+    )
     
     if len(state.messages) < 5:
         # No summarization needed
@@ -143,7 +158,7 @@ async def summarize_conversation(
     
     messages = [SystemMessage(content=system_prompt)] + state.messages
     
-    summary_response = await llm.ainvoke(messages)
+    summary_response = await llm.ainvoke(messages, config=config)
     summary_text = summary_response.content.strip()
     
     # Keep summary and last 2 messages for context
@@ -167,13 +182,16 @@ async def respond(
 ) -> dict[str, list[BaseMessage]]:
     """Generate a final response to the user's query based on the conducted research."""
 
-    llm = get_llm()
+    llm = get_llm(
+        streaming=config.get("streaming", False), 
+        callbacks=config.get("callbacks", [])
+    )
     context = format_docs(state.documents)
     prompt = RESPONSE_SYSTEM_PROMPT.format(context=context)
     messages = [
         {"role": "system", "content": prompt + "\n\nIMPORTANT: Always preserve code blocks with ```python and ``` markers. Never modify code content."}
     ] + state.messages
-    response = await llm.ainvoke(messages)
+    response = await llm.ainvoke(messages, config=config)
     return {"messages": [response]}
 
 def create_router_graph():
@@ -202,7 +220,7 @@ def create_router_graph():
     # Instantiate MemorySaver checkpointer
     memory=MemorySaver()
 
-    # Compile into a graph object that you can invoke and deploy
+    # Compile into a graph object
     graph = builder.compile(checkpointer=memory)
     graph.name = "SkLearnAssistantGraph"
     
@@ -215,7 +233,7 @@ def create_router_graph():
 #print(graph.nodes)
 
 #input_state = AgentState(
-    #messages=[HumanMessage(content="Hi my name is kumar?")]
+    #messages=[HumanMessage(content="Who to use RandomForestClassifier?")]
 #)
 # Optionally, define a config with thread_id and user_id for persistence
 #config = {"configurable": {"thread_id": "1", "user_id": "user123"}}

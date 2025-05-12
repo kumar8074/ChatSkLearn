@@ -37,13 +37,16 @@ async def generate_queries(
     class Response(TypedDict):
         queries: list[str]
     
-    llm = get_llm()
+    llm = get_llm(
+        streaming=config.get("streaming", False), 
+        callbacks=config.get("callbacks", [])
+    )
     model = llm.with_structured_output(Response)
     messages = [
         {"role": "system", "content": GENERATE_QUERIES_SYSTEM_PROMPT},
         {"role": "human", "content": state.question},
     ]
-    response = cast(Response, await model.ainvoke(messages))
+    response = cast(Response, await model.ainvoke(messages, config=config))
     return {"queries": response["queries"]}
 
 async def retrieve_documents(
@@ -69,12 +72,12 @@ def create_researcher_graph():
     builder.add_edge(START, "generate_queries")
     builder.add_conditional_edges(
         "generate_queries",
-        retrieve_in_parallel,  # type: ignore
+        retrieve_in_parallel,  
         path_map=["retrieve_documents"],
     )
     builder.add_edge("retrieve_documents", END)
     
-    # Compile into a graph object that you can invoke and deploy
+    # Compile into a graph object
     researcher_graph = builder.compile()
     researcher_graph.name = "ResearcherGraph"
     

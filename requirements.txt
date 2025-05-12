@@ -17,4 +17,6 @@ aiohttp
 python-dotenv
 numexpr
 flask
+pytest
+pytest-asyncio
 
