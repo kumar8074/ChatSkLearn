@@ -163,3 +163,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - Uses [ChromaDB](https://github.com/chroma-core/chroma) for vector storage
 - Powered by various LLM providers (Gemini, OpenAI, Anthropic, Cohere)
 - Documentation content from [Scikit-learn](https://scikit-learn.org/)
+- Developed by [Lalan Kumar](https://github.com/kumar8074)
