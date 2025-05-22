@@ -131,7 +131,6 @@ chatsklearn/
 ├── config/           # Application configuration
 ├── DATA/             # Vector store data
 ├── logs/             # Application logs
-├── notebooks/        # Jupyter notebooks for exploration
 ├── processor/        # Web crawling and data ingestion
 └── tests/            # Unit and integration tests
 ```
