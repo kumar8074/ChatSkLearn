@@ -1,6 +1,6 @@
 # ===================================================================================
 # Project: ChatSkLearn
-# File: app/processor/data_ingestion.py
+# File: processor/data_ingestion.py
 # Description: This file Loads the data from URLs and store it in a VectorStoreDB (Defaults to CHROMA)
 # Author: LALAN KUMAR
 # Created: [15-04-2025]
