@@ -8,7 +8,7 @@ project_root = os.path.abspath(os.path.join(current_file_path, "../.."))
 if project_root not in sys.path:
     sys.path.append(project_root)
 
-from app.graphs.router import create_router_graph
+from app.graphs.sk_assistant import create_router_graph
 from app.graphs.states import InputState, AgentState
 from langchain_core.messages import HumanMessage
 

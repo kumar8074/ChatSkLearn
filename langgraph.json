@@ -1,0 +1,10 @@
+{
+    "dependencies": [
+      "."
+    ],
+    "graphs": {
+      "researcher": "./app/graphs/researcher.py:create_researcher_graph",
+      "sk_assistant": "./app/graphs/sk_assistant.py:create_assistant_graph"
+    },
+    "env": "./.env"
+}

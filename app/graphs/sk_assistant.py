@@ -1,11 +1,11 @@
 # ===================================================================================
 # Project: ChatSkLearn
-# File: app/graphs/router.py
+# File: app/graphs/sk_assistant.py
 # Description: This file contains the implementation of Researcher main SkLearnAssitant Graph.
 #              It also includes the Researcher sub-Graph.
 # Author: LALAN KUMAR
 # Created: [18-04-2025]
-# Updated: [29-04-2025]
+# Updated: [09-06-2025]
 # LAST MODIFIED BY: LALAN KUMAR [https://github.com/kumar8074]
 # Version: 1.0.0
 # ===================================================================================
@@ -15,6 +15,8 @@ import os
 import sys
 from langgraph.graph import StateGraph, START, END
 from typing_extensions import TypedDict, cast, Literal
+from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage, RemoveMessage, AIMessage
+from langchain_core.messages.utils import count_tokens_approximately
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.memory import MemorySaver
 
@@ -33,7 +35,6 @@ from app.graphs.prompts import (
     RESPONSE_SYSTEM_PROMPT
 )
 from app.core.llm import get_llm
-from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 from app.graphs.researcher import create_researcher_graph
 from app.core.utils import format_docs
 from typing import Any
@@ -141,41 +142,77 @@ def check_finished(state: AgentState) -> Literal["respond", "conduct_research"]:
 async def summarize_conversation(
     state: AgentState, *, config: RunnableConfig
 ) -> dict[str, Any]:
-    """Summarize conversation history after every 5 messages."""
+    """Incrementally summarize conversation history and trim old messages."""
     llm = get_llm(
-        streaming=config.get("streaming", False), 
+        streaming=config.get("streaming", False),
         callbacks=config.get("callbacks", [])
     )
     
-    if len(state.messages) < 5:
-        # No summarization needed
+    # Determine new messages since last summary
+    last_index = state.last_summarized_index or -1
+    new_messages = state.messages[last_index + 1 :]
+    
+    # If no new messages, no update needed
+    if not new_messages:
         return {}
     
-    system_prompt = (
-        "You are an assistant that summarizes the conversation so far. "
-        "Create a concise summary capturing the key points."
-    )
+    # Compose prompt to extend existing summary with new messages
+    if state.summary:
+        prompt = (
+            f"This is the existing summary of the conversation:\n{state.summary}\n\n"
+            "Extend the summary by incorporating the following new messages:\n"
+        )
+    else:
+        prompt = "Create a summary of the following conversation messages:\n"
+        
+    def get_role(message):
+        if isinstance(message, HumanMessage):
+            return "Human"
+        elif isinstance(message, AIMessage):
+            return "Assistant"
+        elif isinstance(message, SystemMessage):
+            return "System"
+        else:
+            return "Unknown"
     
-    messages = [SystemMessage(content=system_prompt)] + state.messages
+    # Format new messages as text for summarization
+    new_lines = "\n".join(f"{get_role(m)}: {m.content}" for m in new_messages)
+    prompt += new_lines + "\n\nNew summary:"
     
+    # Use SystemMessage + HumanMessage for Gemini compatibility
+    messages = [
+        SystemMessage(content="You are an assistant that summarizes the conversation so far. Create a concise summary capturing the key points."),
+        HumanMessage(content=prompt)
+    ]
+    
+    # Call LLM to get updated summary
     summary_response = await llm.ainvoke(messages, config=config)
-    summary_text = summary_response.content.strip()
+    updated_summary = summary_response.content.strip()
     
-    # Keep summary and last 2 messages for context
-    last_messages = state.messages[-2:]
-    new_messages = [SystemMessage(content=f"Summary of conversation so far: {summary_text}")] + last_messages
+    # Prepare new messages list: summary system message + recent messages after new_messages
+    # Keep last 2 messages after new_messages for context
+    num_recent = 2
+    recent_messages = state.messages[last_index + 1 + len(new_messages) :][-num_recent:]
+    new_messages_list = [SystemMessage(content=f"Summary of conversation so far: {updated_summary}")] + recent_messages
+    
+    # Prepare RemoveMessage objects to delete all messages up to last summarized index + new_messages
+    messages_to_remove = state.messages[: last_index + 1 + len(new_messages)]
+    delete_messages = [RemoveMessage(id=m.id) for m in messages_to_remove]
     
     return {
-        "summary": summary_text,
-        "messages": new_messages
+        "summary": updated_summary,
+        "last_summarized_index": last_index + len(new_messages),
+        "messages": new_messages_list + delete_messages,
     }
 
 # Conditional function to decide whether to summarize or continue
 def check_summarize(state: AgentState) -> Literal["summarize_conversation", "continue"]:
-    if len(state.messages) >= 5:
+    # Summarize if token count exceeds threshold and there are new messages since last summary
+    token_count = count_tokens_approximately(state.messages)
+    last_index = state.last_summarized_index or -1
+    if token_count >= 1000 and len(state.messages) > last_index + 1:
         return "summarize_conversation"
-    else:
-        return "continue"
+    return "continue"
 
 async def respond(
     state: AgentState, *, config: RunnableConfig
@@ -194,7 +231,7 @@ async def respond(
     response = await llm.ainvoke(messages, config=config)
     return {"messages": [response]}
 
-def create_router_graph():
+def create_assistant_graph():
     """Create and return the main agent graph."""
     builder = StateGraph(AgentState, input=InputState)
 
@@ -205,17 +242,25 @@ def create_router_graph():
     builder.add_node("create_research_plan", create_research_plan)
     builder.add_node("respond", respond)
     builder.add_node("summarize_conversation", summarize_conversation)
-    builder.add_node("continue", lambda state, config: {})  # Dummy node to continue flow
-
+    builder.add_node("continue", lambda state, config: {})  # No-op dummy node
+    
+    # Entry point and other edges as before
     builder.add_edge(START, "analyze_and_route_query")
     builder.add_conditional_edges("analyze_and_route_query", route_query)
     builder.add_edge("create_research_plan", "conduct_research")
     builder.add_conditional_edges("conduct_research", check_finished)
-    builder.add_edge("ask_for_more_info", END)
-    builder.add_edge("respond_to_general_query", END)
-    builder.add_edge("respond", END)
-    builder.add_conditional_edges("summarize_conversation", check_summarize, path_map=["summarize_conversation", "continue"])
+    builder.add_edge("respond", "summarize_conversation")
+    builder.add_conditional_edges(
+        "summarize_conversation",
+        check_summarize,
+        path_map={
+            "summarize_conversation": "continue",
+            "continue": "continue",
+        },
+    )
     builder.add_edge("continue", END)
+    builder.add_edge("ask_for_more_info", "create_research_plan")
+    builder.add_edge("respond_to_general_query", END)
     
     # Instantiate MemorySaver checkpointer
     memory=MemorySaver()
@@ -228,7 +273,7 @@ def create_router_graph():
 
 
 # Example usage:
-#graph=create_router_graph()
+#graph=create_assistant_graph()
 #print("Graph compiled successfully.")
 #print(graph.nodes)
 

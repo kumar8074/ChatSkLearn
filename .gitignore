@@ -1,3 +1,5 @@
 .env
 __pycache__/
 .langgraph_api/
+DATA/chroma_store/
+DATA/chroma_store_gemini/

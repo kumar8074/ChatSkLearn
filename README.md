@@ -24,6 +24,21 @@ ChatSkLearn is built with a modular architecture:
 6. **Router Graph**: Determines how to handle each user query
 7. **Response Generator**: Creates coherent, accurate responses based on retrieved information
 
+## Graphs
+
+<table>
+  <tr>
+    <td align="center">
+      <img src="https://github.com/user-attachments/assets/46cb9229-2f08-4e21-bf05-5fa2dcba4e6a" width="300"/><br/>
+      <b>SkLearn Assistant main Graph</b>
+    </td>
+    <td align="center">
+      <img src="https://github.com/user-attachments/assets/cb7acc32-fbf2-4fdb-919b-4c044a93dd0b" width="300"/><br/>
+      <b>Researcher sub Graph</b>
+    </td>
+  </tr>
+</table>
+
 ## Getting Started
 
 ### Prerequisites
