@@ -37,10 +37,7 @@ async def generate_queries(
     class Response(TypedDict):
         queries: list[str]
     
-    llm = get_llm(
-        streaming=config.get("streaming", False), 
-        callbacks=config.get("callbacks", [])
-    )
+    llm = get_llm()
     model = llm.with_structured_output(Response)
     messages = [
         {"role": "system", "content": GENERATE_QUERIES_SYSTEM_PROMPT},

@@ -56,7 +56,7 @@ tracer = LangChainTracer(client=langsmith_client, project_name="SkLearnAssistant
 MODELS = {
     "gpt-4o": "OpenAI GPT-4o",
     "claude-3-sonnet": "Claude 3 Sonnet",
-    "gemini-2.0-flash": "Gemini 2.0 flash",
+    "gemini-2.0-flash": "Gemini 2.5 flash",
     "command": "Cohere Command"
 }
 

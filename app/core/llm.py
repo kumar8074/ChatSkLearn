@@ -27,7 +27,7 @@ if project_root not in sys.path:
 
 from config import settings
 
-def get_llm(provider: Optional[str] = None, streaming: bool = False, callbacks: list = None) -> BaseChatModel:
+def get_llm(provider: Optional[str] = None) -> BaseChatModel:
     """Initialize and return LLM instance based on provider.
     
     Args:
@@ -47,22 +47,22 @@ def get_llm(provider: Optional[str] = None, streaming: bool = False, callbacks: 
     if provider == settings.LLM_PROVIDER_GEMINI:
         if not settings.GEMINI_API_KEY:
             raise ValueError("Gemini API key not found in environment")
-        return ChatGoogleGenerativeAI(model=settings.GEMINI_LLM_MODEL, streaming=streaming, callbacks=callbacks or [])
+        return ChatGoogleGenerativeAI(model=settings.GEMINI_LLM_MODEL)
     
     elif provider == settings.LLM_PROVIDER_OPENAI:
         if not settings.OPENAI_API_KEY:
             raise ValueError("OpenAI API key not found in environment")
-        return ChatOpenAI(model=settings.OPENAI_LLM_MODEL, streaming=streaming, callbacks=callbacks or [])
+        return ChatOpenAI(model=settings.OPENAI_LLM_MODEL)
     
     elif provider == settings.LLM_PROVIDER_ANTHROPIC:
         if not settings.ANTHROPIC_API_KEY:
             raise ValueError("Anthropic API key not found in environment")
-        return ChatAnthropic(model=settings.ANTHROPIC_LLM_MODEL, streaming=streaming, callbacks=callbacks or [])
+        return ChatAnthropic(model=settings.ANTHROPIC_LLM_MODEL)
     
     elif provider == settings.LLM_PROVIDER_COHERE:
         if not settings.COHERE_API_KEY:
             raise ValueError("Cohere API key not found in environment")
-        return ChatCohere(model=settings.COHERE_LLM_MODEL, streaming=streaming, callbacks=callbacks or [])
+        return ChatCohere(model=settings.COHERE_LLM_MODEL)
     
     else:
         raise ValueError(f"Unsupported LLM provider: {provider}")

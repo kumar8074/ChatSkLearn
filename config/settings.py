@@ -47,18 +47,18 @@ if OPENAI_API_KEY:
 
 # Model settings - Gemini
 GEMINI_EMBEDDING_MODEL = os.getenv("GEMINI_EMBEDDING_MODEL", "models/text-embedding-004")
-GEMINI_LLM_MODEL = os.getenv("GEMINI_LLM_MODEL", "gemini-2.5-flash-preview-04-17")
+GEMINI_LLM_MODEL = os.getenv("GEMINI_LLM_MODEL", "gemini-2.5-flash")
 
 # Model settings - OpenAI
 OPENAI_EMBEDDING_MODEL = os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small")
-OPENAI_LLM_MODEL = os.getenv("OPENAI_LLM_MODEL", "gpt-4o")
+OPENAI_LLM_MODEL = os.getenv("OPENAI_LLM_MODEL", "gpt-4.1-2025-04-14")
 
 # Model settings - Anthropic
-ANTHROPIC_LLM_MODEL = os.getenv("ANTHROPIC_LLM_MODEL", "claude-3-sonnet-20240229")
+ANTHROPIC_LLM_MODEL = os.getenv("ANTHROPIC_LLM_MODEL", "claude-opus-4-20250514")
 
 # Model settings - Cohere
 COHERE_EMBEDDING_MODEL = os.getenv("COHERE_EMBEDDING_MODEL", "embed-english-v3.0")
-COHERE_LLM_MODEL = os.getenv("COHERE_LLM_MODEL", "command")
+COHERE_LLM_MODEL = os.getenv("COHERE_LLM_MODEL", "command-a-03-2025")
 
 # Database settings
 CHROMA_PERSIST_DIRECTORY = os.getenv("CHROMA_PERSIST_DIRECTORY", "DATA/chroma_store")
